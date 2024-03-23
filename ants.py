@@ -156,12 +156,9 @@ class Ant(Insect):
 
     def double(self):
         """Double this ant's damage, if it has not already been doubled."""
-        # BEGIN Problem 12
         if not self.is_doubled:
             self.is_doubled = True
             self.damage *= 2
-
-        # END Problem 12
 
 
 class HarvesterAnt(Ant):
@@ -183,7 +180,7 @@ from math import inf
 
 
 def existPlacesToInspect(current_pos):
-    return current_pos and not current_pos.is_hive
+    return not current_pos.is_hive
 
 
 def beesExistsAt(current_pos):
@@ -211,7 +208,7 @@ class ThrowerAnt(Ant):
         """
         current_pos = self.place
         place_index = 0
-        while existPlacesToInspect(current_pos):
+        while not current_pos.is_hive:
             if self.isPlaceInThrowerAntRange(place_index) and beesExistsAt(current_pos):
                 return random_bee(current_pos.bees)
             place_index += 1
@@ -493,8 +490,6 @@ class Bee(Insect):
     damage = 1
     is_waterproof = True
 
-    # OVERRIDE CLASS ATTRIBUTES HERE
-
     def sting(self, ant):
         """Attack an ANT, reducing its health by 1."""
         ant.reduce_health(self.damage)
@@ -507,9 +502,7 @@ class Bee(Insect):
     def blocked(self):
         """Return True if this Bee cannot advance to the next Place."""
         # Special handling for NinjaAnt
-        # BEGIN Problem Optional 1
-        return self.place.ant and self.place.ant.blocks_path == True
-        # END Problem Optional 1
+        return self.place.ant and self.place.ant.blocks_path
 
     def action(self, gamestate):
         """A Bee's action stings the Ant that blocks its exit if it is blocked,
@@ -589,49 +582,46 @@ class SlowThrower(ThrowerAnt):
             self.turns = 5
 
 
+def getInsectsInPlace(current_place):
+    insects = [current_place.ant] if current_place.ant else []
+    insects += [current_place.ant.ant_contained] if current_place.ant and current_place.ant.is_container else []
+    insects += current_place.bees
+    return insects
+
+
 class LaserAnt(ThrowerAnt):
     name = 'Laser'
     food_cost = 10
-    implemented = False
+    implemented = True
     damage = 2
 
     def __init__(self, health=1):
         super().__init__(health)
         self.insects_shot = 0
 
-    def getInsectsAndTheirDistances(self, gamestate):
-        places_from = {}
-        place_indx = self.place
-        current_place = self.place
-        distance_from_laser_ant = 0
+    def insects_in_front(self, gamestate):
+        insects_distances = {}
+        for insect in getInsectsInPlace(self.place):
+            if insect.name != 'Laser':
+                insects_distances[insect] = 0
 
-        while place_indx:
-            ant = place_indx.ant
-            bee = place_indx.bees
-            if ant and ant.is_container:
-                places_from[ant] = distance_from_laserant
-                if ant.ant_contained.name != 'laser':
-                    places_from[ant.ant_contained] = distance_from_laserant
-            elif ant and ant.name != 'Laser':
-                places_from[ant] = distance_from_laserant
+        def getDistance(distance, current_place):
+            if current_place.is_hive:
+                return None
+            for insect in getInsectsInPlace(current_place):
+                insects_distances[insect] = distance
+            getDistance(distance + 1, inspectThePlaceInFront(current_place))
+            return None
 
-            if bee:
-                for i in range(len(bee)):
-                    places_from[bee[i]] = distance_from_laserant
-
-            distance_from_laserant += 1
-            place_indx = place_indx.entrance
-        return places_from
+        getDistance(1, inspectThePlaceInFront(self.place))
+        return insects_distances
 
     def calculate_damage(self, distance):
-        calculated_damage = self.damage - self.insects_shot * 0.0625
-        if calculated_damage <= 0:
-            return 0.0
-        calculated_damage -= (distance * 0.25)
+        calculated_damage = self.damage - (self.insects_shot * 0.0625) - (distance * 0.25)
         return max(0.0, calculated_damage)
 
     def action(self, gamestate):
-        insects_and_distances = self.getInsectsAndTheirDistances(gamestate)
+        insects_and_distances = self.insects_in_front(gamestate)
         for insect, distance in insects_and_distances.items():
             damage = self.calculate_damage(distance)
             insect.reduce_health(damage)
