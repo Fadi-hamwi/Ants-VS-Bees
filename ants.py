@@ -592,7 +592,7 @@ class SlowThrower(ThrowerAnt):
 class LaserAnt(ThrowerAnt):
     name = 'Laser'
     food_cost = 10
-    implemented = True
+    implemented = False
     damage = 2
 
     def __init__(self, health=1):
