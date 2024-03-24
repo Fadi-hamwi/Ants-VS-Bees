@@ -1,3 +1,5 @@
+import playsound
+
 import ants
 import ants_strategies
 import utils
@@ -10,33 +12,41 @@ import shutil
 import zipfile
 import threading
 import importlib
+import winsound
 from time import sleep
 from ucb import *
 
 VERSION = 1.2
 ASSETS_DIR = "assets/"
 INSECT_DIR = "insects/"
+MUSIC_DIR = "music/"
 STRATEGY_SECONDS = 3
 INSECT_FILES = {
-       'Worker': ASSETS_DIR + INSECT_DIR + "ant_harvester.gif",
-       'Thrower': ASSETS_DIR + INSECT_DIR + "ant_thrower.gif",
-       'Long': ASSETS_DIR + INSECT_DIR + "ant_longthrower.gif",
-       'Short': ASSETS_DIR + INSECT_DIR + "ant_shortthrower.gif",
-       'Harvester': ASSETS_DIR + INSECT_DIR + "ant_harvester.gif",
-       'Fire': ASSETS_DIR + INSECT_DIR + "ant_fire.gif",
-       'Bodyguard': ASSETS_DIR + INSECT_DIR + "ant_bodyguard.gif",
-       'Hungry': ASSETS_DIR + INSECT_DIR + "ant_hungry.gif",
-       'Slow': ASSETS_DIR + INSECT_DIR + "ant_slow.gif",
-       'Scary': ASSETS_DIR + INSECT_DIR + "ant_scary.gif",
-       'Laser': ASSETS_DIR + INSECT_DIR + "ant_laser.gif",
-       'Ninja': ASSETS_DIR + INSECT_DIR + "ant_ninja.gif",
-       'Wall': ASSETS_DIR + INSECT_DIR + "ant_wall.gif",
-       'Scuba': ASSETS_DIR + INSECT_DIR + "ant_scuba.gif",
-       'Queen': ASSETS_DIR + INSECT_DIR + "ant_queen.gif",
-       'Tank': ASSETS_DIR + INSECT_DIR + "ant_tank.gif",
-       'Bee': ASSETS_DIR + INSECT_DIR + "bee.gif",
-       'Remover': ASSETS_DIR + INSECT_DIR + "remove.png",
+    'Worker': ASSETS_DIR + INSECT_DIR + "ant_harvester.gif",
+    'Thrower': ASSETS_DIR + INSECT_DIR + "ant_thrower.gif",
+    'Long': ASSETS_DIR + INSECT_DIR + "ant_longthrower.gif",
+    'Short': ASSETS_DIR + INSECT_DIR + "ant_shortthrower.gif",
+    'Harvester': ASSETS_DIR + INSECT_DIR + "ant_harvester.gif",
+    'Fire': ASSETS_DIR + INSECT_DIR + "ant_fire.gif",
+    'Bodyguard': ASSETS_DIR + INSECT_DIR + "ant_bodyguard.gif",
+    'Hungry': ASSETS_DIR + INSECT_DIR + "ant_hungry.gif",
+    'Slow': ASSETS_DIR + INSECT_DIR + "ant_slow.gif",
+    'Scary': ASSETS_DIR + INSECT_DIR + "ant_scary.gif",
+    'Laser': ASSETS_DIR + INSECT_DIR + "ant_laser.gif",
+    'Ninja': ASSETS_DIR + INSECT_DIR + "ant_ninja.gif",
+    'Wall': ASSETS_DIR + INSECT_DIR + "ant_wall.gif",
+    'Scuba': ASSETS_DIR + INSECT_DIR + "ant_scuba.gif",
+    'Queen': ASSETS_DIR + INSECT_DIR + "ant_queen.gif",
+    'Tank': ASSETS_DIR + INSECT_DIR + "ant_tank.gif",
+    'Bee': ASSETS_DIR + INSECT_DIR + "bee.gif",
+    'Remover': ASSETS_DIR + INSECT_DIR + "remove.png",
 }
+
+
+def playMusic():
+    while True:
+        for file in os.listdir(ASSETS_DIR + MUSIC_DIR):
+            playsound.playsound(ASSETS_DIR + MUSIC_DIR + file)
 
 
 class GUI:
@@ -190,19 +200,19 @@ class GUI:
                     self.insects.append(self.insectToId[place.ant])
                 # Ok there is an ant that needs to be drawn here
                 self.places[pRow][pCol]["insects"] = {
-                        "id": self.insectToId[place.ant],
-                        "type": place.ant.name,
-                        "img": self.get_insect_img_file(place.ant.name)
-                        }
+                    "id": self.insectToId[place.ant],
+                    "type": place.ant.name,
+                    "img": self.get_insect_img_file(place.ant.name)
+                }
                 # Check if it's a container ant
                 if place.ant is not None:
                     ant_container = isinstance(place.ant, ants.ContainerAnt)
                     self.places[pRow][pCol]["insects"]["container"] = ant_container
                     if ant_container and place.ant.ant_contained:
                         self.places[pRow][pCol]["insects"]["contains"] = {
-                                "type": place.ant.ant_contained.name,
-                                "img": self.get_insect_img_file(place.ant.ant_contained.name)
-                                }
+                            "type": place.ant.ant_contained.name,
+                            "img": self.get_insect_img_file(place.ant.ant_contained.name)
+                        }
             else:
                 self.places[pRow][pCol]["insects"] = {}
             # Loop through our bees
@@ -260,11 +270,11 @@ class HttpHandler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         path = self.path
         action = {
-                '/ajax/fetch/state': gui.getState,
-                '/ajax/start/game': gui.startGame,
-                '/ajax/exit': gui.exit,
-                '/ajax/deploy/ant': gui.deployAnt,
-                }.get(path)
+            '/ajax/fetch/state': gui.getState,
+            '/ajax/start/game': gui.startGame,
+            '/ajax/exit': gui.exit,
+            '/ajax/deploy/ant': gui.deployAnt,
+        }.get(path)
         if not action:
             # We could not find a valid route
             return
@@ -272,8 +282,8 @@ class HttpHandler(http.server.SimpleHTTPRequestHandler):
             fp=self.rfile,
             headers=self.headers,
             environ={'REQUEST_METHOD': 'POST',
-             'CONTENT_TYPE': self.headers['Content-Type'],
-            })
+                     'CONTENT_TYPE': self.headers['Content-Type'],
+                     })
         data = self.cgiFieldStorageToDict(form)
         response = action(data)
         self.send_response(200)
@@ -369,7 +379,8 @@ def run(*args):
     gui = GUI()
     gui.args = args
     # Basic HTTP Handler
-    #Handler = http.server.SimpleHTTPRequestHandler
+    # Handler = http.server.SimpleHTTPRequestHandler
+    threading.Thread(target=playMusic).start()
     for PORT in range(8000, 8100):
         try:
             httpd = CustomThreadingTCPServer(("", PORT), HttpHandler)
@@ -385,6 +396,7 @@ def run(*args):
         while gui.active:
             httpd.handle_request()
         print("Web server terminated")
+
     threading.Thread(target=start_http).start()
     try:
         webbrowser.open("http://localhost:" + str(PORT) + '/gui.html', 2)
